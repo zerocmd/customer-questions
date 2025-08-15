@@ -1,0 +1,22 @@
+// --- Inputs ---
+// Input hostname
+// Identify all USB drives or devices that have been plugged into the host 
+// in the past 90 day's
+
+let lookback   = 90d;
+let targetHost = "HOSTNAME_OR_FQDN";  // <- replace with the device name
+
+DeviceEvents
+| where Timestamp > ago(lookback)
+| where ActionType == "UsbDriveMounted"
+| where DeviceName =~ targetHost
+| extend af = parse_json(AdditionalFields)
+| extend
+    SerialNumber = tostring(af.SerialNumber),
+    ProductName  = tostring(af.ProductName),
+    Manufacturer = tostring(af.Manufacturer),
+    BusType      = tostring(af.BusType),
+    DriveLetter  = tostring(af.DriveLetter)
+| where isnotempty(SerialNumber)
+| project Timestamp, DeviceName, SerialNumber, ProductName, Manufacturer, BusType, DriveLetter
+| order by Timestamp desc

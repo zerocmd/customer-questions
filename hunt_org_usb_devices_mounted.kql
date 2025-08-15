@@ -1,0 +1,28 @@
+// Time window — tweak as needed
+// what usb devices have been mounted, and where have they been mounted in the past 90 days?
+let lookback = 90d;
+
+// Normalize all "USB drive mounted" events and pull fields from AdditionalFields JSON
+let UsbMounts =
+    DeviceEvents
+    | where Timestamp > ago(lookback)
+    | where ActionType == "UsbDriveMounted"
+    | extend af = parse_json(AdditionalFields)
+    | extend
+        SerialNumber  = tostring(af.SerialNumber),
+        ProductName   = tostring(af.ProductName),
+        Manufacturer  = tostring(af.Manufacturer),
+        BusType       = tostring(af.BusType),
+        DriveLetter   = tostring(af.DriveLetter)
+    | where isnotempty(SerialNumber)
+    | project Timestamp, DeviceName, DeviceId, SerialNumber, ProductName, Manufacturer, BusType, DriveLetter;
+
+// Per‑serial rollup: when first/last seen and on which hosts
+UsbMounts
+| summarize
+    FirstSeen = min(Timestamp),
+    LastSeen  = max(Timestamp),
+    HostCount = dcount(DeviceName),
+    Hosts     = make_set(DeviceName, 100)
+  by SerialNumber, ProductName, Manufacturer, BusType
+| order by LastSeen desc
