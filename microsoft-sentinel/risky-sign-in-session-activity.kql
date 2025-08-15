@@ -1,0 +1,15 @@
+// Query to find all activity related to a session stemming from a risky sign-in
+let startTime=ago(7d);
+let endTime=ago(0d);
+union (SigninLogs
+| where TimeGenerated between (startTime .. endTime)
+| extend LocationDetails1=parse_json(LocationDetails)), 
+(AADNonInteractiveUserSignInLogs
+| where TimeGenerated between (startTime .. endTime)
+| extend LocationDetails1=parse_json(LocationDetails))
+| where RiskLevelDuringSignIn != "none" and isnotempty(SessionId)
+| extend City = LocationDetails1.city
+| join (CloudAppEvents
+    | extend SessionId = tostring(RawEventData.SessionId))
+    on SessionId
+| summarize ActionsPerformed = makeset(ActionType), IPInfo = makeset(pack("Country:", Location,"City:", City, "IP:", IPAddress, "RiskLevel:", RiskLevel, "RiskDetail:", RiskDetail)) by UserPrincipalName, SessionId, LocationDetails_string

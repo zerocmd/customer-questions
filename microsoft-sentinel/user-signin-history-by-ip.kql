@@ -1,0 +1,80 @@
+// Query to get overview of user signin history by IP address to help identify typical vs. anomalous logon activity for a user.
+let startTime=ago(7d);
+let endTime=ago(0d);
+let inputUPN = "johndoe@example.com";
+union
+    (SigninLogs
+    | where TimeGenerated between (startTime .. endTime)
+    | extend
+        LocationDetails1=parse_json(LocationDetails),
+        DeviceDetail1= parse_json(DeviceDetail)
+    ),
+    (AADNonInteractiveUserSignInLogs
+    | where TimeGenerated between (startTime .. endTime)
+    | extend
+        LocationDetails1=parse_json(LocationDetails),
+        DeviceDetail1= parse_json(DeviceDetail)
+    )
+| where UserPrincipalName == inputUPN
+| mv-expand todynamic(AuthenticationDetails)
+| extend
+    authenticationMethod = AuthenticationDetails.authenticationMethod,
+    authenticationStepResultDetail = AuthenticationDetails.authenticationStepResultDetail,
+    authTime = AuthenticationDetails.authenticationStepDateTime,
+    trustType = parse_json(DeviceDetail1).trustType,
+    isManaged= parse_json(DeviceDetail1).isManaged,
+    city = tostring(parse_json(LocationDetails1).city),
+    state = tostring(parse_json(LocationDetails1).state),
+    country = tostring(parse_json(LocationDetails1).countryOrRegion)
+| extend
+    StrongMFAMethod = iif(authenticationMethod !in ("Password", "Previously satisfied", "") and AuthenticationDetails.succeeded == "true", authenticationMethod, ""),
+    StrongMFATime =  iif(authenticationMethod !in ("Password", "Previously satisfied", "") and AuthenticationDetails.succeeded == "true", authTime, "")
+| summarize
+    FirstAttempt = min(CreatedDateTime),
+    LastAttempt = max(CreatedDateTime),
+    trustTypeSet = make_set(trustType),
+    isManagedSet= makeset(isManaged),
+    UserAgentSet = make_set(UserAgent),
+    AppDisplayNameSet = make_set(AppDisplayName),
+    RiskDetailSet = make_set(RiskDetail),
+    DeviceDetailSet = make_set(DeviceDetail1),
+    StrongMFASet = make_set_if(pack("StrongMFAMethod", StrongMFAMethod, "StrongMFATime", StrongMFATime), isnotempty(StrongMFAMethod)),
+    AuthDetailSet = makeset(pack("authenticationStepDateTime", authTime, "authenticationMethod", authenticationMethod, "authenticationStepResultDetail", authenticationStepResultDetail)),
+    dcount(tostring(authTime))
+    by
+    city,
+    state,
+    country,
+    IPAddress,
+    ResultType,
+    ResultDescription,
+    AuthenticationRequirement
+| summarize
+    FirstAttempt = min(FirstAttempt),
+    LastAttempt = max(LastAttempt),
+    trustTypeSet = makeset(trustTypeSet),
+    isManagedSet = make_set(isManagedSet),
+    UserAgentSet= makeset(UserAgentSet),
+    AppDisplayNameSet=makeset(AppDisplayNameSet),
+    RiskDetailSet = makeset(RiskDetailSet),
+    StrongMFASet= make_set(StrongMFASet),
+    AuthDetailSet = makeset(AuthDetailSet),
+    DeviceDetailSet = make_set(DeviceDetailSet),
+    AuthStats = makeset(pack("ResultType", ResultType, "Count", dcount_authTime, "ResultDescription", ResultDescription, "AuthenticationRequirement", AuthenticationRequirement))
+    by city, state, country, IPAddress 
+| project-reorder
+    FirstAttempt,
+    LastAttempt,
+    IPAddress,
+    city,
+    state,
+    country,
+    trustTypeSet,
+    isManagedSet,
+    StrongMFASet,
+    RiskDetailSet,
+    AuthStats,
+    UserAgentSet,
+    DeviceDetailSet,
+    AppDisplayNameSet,
+    AuthDetailSet

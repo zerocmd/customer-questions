@@ -1,0 +1,9 @@
+// Query to get all events performed by a process across device tables 
+let startTime=ago(7d);
+let endTime=ago(0d);
+let AlertProcessUniqueId = "1234567891011";
+union DeviceProcessEvents, DeviceNetworkEvents, DeviceImageLoadEvents, DeviceFileEvents, DeviceEvents, DeviceRegistryEvents
+| where Timestamp between (startTime .. endTime)
+| where InitiatingProcessUniqueId == AlertProcessUniqueId
+| project-reorder Timestamp, ActionType, InitiatingProcessCommandLine, FileName, FolderPath, ProcessCommandLine, ProcessRemoteSessionDeviceName, InitiatingProcessRemoteSessionDeviceName, InitiatingProcessParentFileName, RemoteUrl, RemoteIP, RemotePort, RegistryKey, RegistryValueData, InitiatingProcessAccountName, AdditionalFields
+| order by Timestamp nulls last

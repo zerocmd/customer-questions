@@ -1,0 +1,27 @@
+// Query to find the last logon for a device before a security alert involving the device
+let startTime=ago(7d);
+let endTime=ago(0d);
+let AlertDeviceName = "workstation";
+AlertInfo
+| join AlertEvidence on AlertId
+| where isnotempty(DeviceName)
+| where DeviceName contains AlertDeviceName
+| summarize by Title, DeviceName, AlertTime = Timestamp, AlertId, DeviceId 
+| join (DeviceLogonEvents
+    | where Timestamp between (startTime .. endTime)
+    | where ActionType == "LogonSuccess"
+    | summarize
+        by
+        LoggedonUser = AccountName,
+        LoggedonUserDomain = AccountDomain,
+        LogonTime = Timestamp,
+        LogonDeviceId = DeviceId,
+        DeviceName=tolower(DeviceName),
+        RemoteDeviceName,
+        RemoteIP,
+        ActionType)
+    on DeviceName
+| extend TimeDiff = datetime_diff('second', AlertTime, LogonTime)
+| where TimeDiff > 0 // Only return successful logons before the alert time
+| summarize arg_min(TimeDiff, *) by Title, AlertId
+| project-away DeviceName1, TimeDiff

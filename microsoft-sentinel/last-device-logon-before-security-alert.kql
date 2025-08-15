@@ -1,0 +1,30 @@
+// Query to find the last logon for a device before a security alert involving the device
+let startTime=ago(7d);
+let endTime=ago(0d);
+let AlertDeviceName = "workstation";
+SecurityAlert
+| where TimeGenerated between (startTime .. endTime)
+| mv-expand todynamic(Entities)
+| where Entities.Type == "host"
+| extend DeviceName = tolower(tostring(Entities.HostName)), AlertTime = TimeGenerated, AlertDeviceId = tostring(Entities.MdatpDeviceId)
+| where DeviceName contains AlertDeviceName
+| summarize by AlertName, DeviceName, AlertTime, SystemAlertId, AlertDeviceId 
+| join (DeviceLogonEvents
+    | where TimeGenerated between (startTime .. endTime)
+    | where ActionType == "LogonSuccess"
+    | summarize
+        by
+        LoggedonUser = AccountName,
+        LoggedonUserDomain = AccountDomain,
+        LogonTime = TimeGenerated,
+        LogonDeviceId = DeviceId,
+        DeviceName=tolower(DeviceName),
+        RemoteDeviceName,
+        RemoteIP,
+        ActionType,
+        SourceSystem)
+    on DeviceName
+| extend TimeDiff = datetime_diff('second', AlertTime, LogonTime)
+| where TimeDiff > 0 // Only return successful logons before the alert time
+| summarize arg_min(TimeDiff, *) by AlertName, SystemAlertId
+| project-away DeviceName1, TimeDiff

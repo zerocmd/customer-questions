@@ -1,0 +1,14 @@
+// Query to find other users who have recieved email from the same sender, following an 'Email reported by user as malware or phish' alert
+let startTime=ago(7d);
+let endTime=ago(0d);
+SecurityAlert
+| where TimeGenerated between (startTime .. endTime)
+| where AlertName == "Email reported by user as malware or phish"
+| mv-expand todynamic(Entities)
+| where Entities.Type == "mailMessage"
+| extend ReportedBy = tostring(Entities.Recipient)
+| extend SenderFromAddress = tostring(Entities.Sender)
+| join (EmailEvents| where DeliveryAction != "Blocked" or LatestDeliveryAction != "Blocked") on SenderFromAddress
+| join kind = leftouter (EmailUrlInfo| summarize by Url, NetworkMessageId) on NetworkMessageId
+| join kind = leftouter (EmailAttachmentInfo| summarize by FileName, FileType, NetworkMessageId) on NetworkMessageId
+| summarize Urls=makeset(Url), Files = makeset(pack('File:',FileName,'Type:', FileType)), DeliveryActions = makeset(DeliveryAction), LatestDeliveryActions = makeset(LatestDeliveryAction), ThreatDetails = makeset(pack("ThreatName:", ThreatNames,"ThreatType:", ThreatTypes, "DetectionMethods:", DetectionMethods,"ConfidenceLevel:", ConfidenceLevel)) by AlertTime = TimeGenerated,AlertName, RecipientEmailAddress, SenderFromAddress,Subject, EmailReceivedTime = TimeGenerated1, ReportedBy

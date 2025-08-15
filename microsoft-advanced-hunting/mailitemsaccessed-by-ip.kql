@@ -1,0 +1,29 @@
+// Query to identify emails accessed (MailItemsAccessed event) from a specific IP address. CloudAppEvents data is correlated with EmailAttachmentInfo to identify email attachments 
+let startTime=ago(7d);
+let endTime=ago(0d);
+let AlertIP = "8.8.8.0";
+CloudAppEvents
+| where Timestamp between (startTime .. endTime)
+| where IPAddress == AlertIP
+| where ActionType == "MailItemsAccessed"
+| extend Folders = RawEventData.Folders
+| mv-expand Folders
+| extend FolderItems = Folders.FolderItems
+| mv-expand FolderItems
+| extend InternetMessageId = tostring(FolderItems.InternetMessageId) 
+| join EmailEvents on InternetMessageId
+| join kind = leftouter EmailAttachmentInfo on NetworkMessageId
+| join kind = leftouter EmailUrlInfo on NetworkMessageId
+| summarize makeset(Url)
+    by
+    Timestamp,
+    ActionType,
+    UserAgent,
+    AccountDisplayName,
+    Subject,
+    SenderFromAddress,
+    SenderDisplayName,
+    tostring(RawEventData),
+    FileName,
+    FileSize,
+    FileType

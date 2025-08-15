@@ -1,0 +1,13 @@
+// Query to verify successful first or second factor authentication from an IP. 
+let startTime=ago(7d);
+let endTime=ago(0d);
+let AlertIP = "8.8.8.0";
+union SigninLogs, AADNonInteractiveUserSignInLogs
+| where (TimeGenerated between (startTime .. endTime))
+| where IPAddress == AlertIP
+| mv-expand todynamic(AuthenticationDetails)
+| extend
+    authenticationMethod = AuthenticationDetails.authenticationMethod,
+    succeeded = AuthenticationDetails.succeeded
+| where succeeded == true
+| summarize makeset(AuthenticationDetails, 10) by UserPrincipalName, IPAddress

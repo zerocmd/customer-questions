@@ -1,0 +1,33 @@
+// Query to find MFA modifications for users with sign-in risk detections 
+let startTime=ago(30d);
+let endTime=ago(0d);
+AuditLogs
+| where TimeGenerated between (startTime .. endTime)
+| where TargetResources has "StrongAuthenticationPhoneAppDetail"
+| mv-expand TargetResources
+| extend
+    InitiatingUser = tostring(InitiatedBy.user.userPrincipalName),
+    UserPrincipalName = tostring(TargetResources.userPrincipalName),
+    SourceIP = tostring(InitiatedBy.user.ipAddress),
+    MFAUpdateTime = TimeGenerated
+| extend modifiedProperties = TargetResources.modifiedProperties
+| mv-expand modifiedProperties
+| where modifiedProperties.displayName == "StrongAuthenticationPhoneAppDetail"
+| extend
+    newMFAMethods = tostring(modifiedProperties.newValue),
+    oldMFAMethods = tostring(modifiedProperties.oldValue)
+| extend newMFAMethods = iif(newMFAMethods == "[]", todynamic("[a]"), newMFAMethods)
+| mv-expand todynamic(newMFAMethods)
+| extend newMFAMethods = iif(newMFAMethods == "[a]", todynamic("[]"), newMFAMethods)
+| extend oldMFAMethods = iif(oldMFAMethods == "[]", todynamic("[a]"), oldMFAMethods)
+| mv-expand todynamic(oldMFAMethods)
+| extend oldMFAMethods = iif(oldMFAMethods == "[a]", todynamic("[]"), oldMFAMethods)
+| extend NewDeviceName = newMFAMethods.DeviceName, OldDeviceName = oldMFAMethods.DeviceName, NewDeviceId = newMFAMethods.DeviceId, OldDeviceId = oldMFAMethods.DeviceId
+| summarize NewDeviceNameSet = makeset(NewDeviceName), OldDeviceNameSet = makeset(OldDeviceName), NewDeviceDetails = makeset(pack("Name:",NewDeviceName,"Id:", NewDeviceId)), OldDeviceDetails = makeset(pack("Name:",OldDeviceName,"Id:", OldDeviceId)) by MFAUpdateTime = TimeGenerated, UserPrincipalName, MFAUpdateIP = SourceIP
+| extend NewDeviceAdded = set_difference(NewDeviceNameSet, OldDeviceNameSet)
+| join (SigninLogs
+    | where RiskLevelDuringSignIn != "none"
+    | summarize RiskyLogonDetails = makeset(pack("Time", TimeGenerated,"UserAgent", UserAgent,"Device", DeviceDetail)) by UserPrincipalName, IPAddress, Location, tostring(LocationDetails) 
+    )
+    on UserPrincipalName
+| summarize makeset(RiskyLogonDetails) by RiskyLogonIP = IPAddress, UserPrincipalName, MFAUpdateTime, MFAUpdateIP, tostring(NewDeviceAdded), tostring(NewDeviceDetails), tostring(OldDeviceDetails), Location, tostring(LocationDetails)

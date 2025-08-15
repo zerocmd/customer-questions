@@ -1,0 +1,14 @@
+// Query to summarize activity targeting a specific user
+let startTime=ago(7d);
+let endTime=ago(0d);
+let TargetUser = "johndoe@example.com";
+AuditLogs
+| where TimeGenerated between (startTime .. endTime)
+| extend TargetdisplayName = TargetResources[0].displayName
+| extend type = TargetResources[0].type
+| extend Targetupn = TargetResources[0].userPrincipalName
+| where Targetupn == TargetUser
+| extend SourceIP = InitiatedBy.user.ipAddress
+| extend InitiatingUser = InitiatedBy.user.userPrincipalName
+| extend InitiatingApp = InitiatedBy.app.displayName
+| project TimeGenerated, TargetdisplayName, type, Targetupn, SourceIP, InitiatingUser, InitiatingApp, InitiatedBy, OperationName, Result, AdditionalDetails, TargetResources, ResultDescription, ResultReason

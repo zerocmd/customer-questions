@@ -1,0 +1,34 @@
+//Query to identify DNS tunneling:
+// This question identifies potential instances of DNS tunneling activity based on telemetry gathered from Microsoft Defender for Endpoint (MDE) by looking for a host performing a large number of DNS requests for unusually long, non-existent domains where the corresponding top-level domains have been observed on a small number of hosts. DNS tunneling is a covert technique that exploits the trusted nature of DNS protocol to create hidden communication channels by encoding data within DNS queries and responses. Attackers use it for command-and-control (C2) communications, data exfiltration, malware staging, and bypassing network restrictions—all while evading traditional security controls that typically allow DNS traffic unfiltered. The data returned by this question includes the device involved, the list of suspicious DNS queries, the associated top-level domains and the number of queries performed from a host.
+let DNSHostnameLengthCheck = 40; // This threshold defines the minimum dns query char length to indicate a DNS tunnel
+let DeviceThreshold = 3;// This threshold defines the maximum number of devices on which the top-level domain can be seen to be considered a DNS tunnel
+let ParentDomainQueryCountByHostThreshold = 20;// This threshold defines the minimum number of queries from a host for a parent domain to indicate a DNS tunnel
+let startTime=ago(30d);
+let endTime=ago(0d);
+union DeviceEvents, DeviceNetworkEvents
+| where Timestamp between(startTime .. endTime)
+| where ActionType in ("DnsQueryResponse", "DnsConnectionInspected")
+| extend DeviceEventQuery = tostring(parse_json(AdditionalFields).DnsQueryString)
+| extend DNSQuery = iif(isnotempty(DeviceEventQuery), DeviceEventQuery, tostring(parse_json(AdditionalFields).query))
+| where DNSQuery !endswith ".local" and DNSQuery !endswith ".internal"
+| where strlen (DNSQuery) > DNSHostnameLengthCheck
+| extend ResponseCode = iif(isnotempty(tostring(parse_json(AdditionalFields).DnsResponseCode)), tostring(parse_json(AdditionalFields).DnsResponseCode), tostring(parse_json(AdditionalFields).rcode))
+| summarize ResponseCodeSet =  tostring(make_set(ResponseCode)), Timestamps = makeset(Timestamp) by DNSQuery, DeviceName
+| where ResponseCodeSet contains "3" and ResponseCodeSet !contains "0"// This condition should only return NXDOMAIN (non-existent domain) domains
+| where DNSQuery matches regex "^(([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)\\.)+[a-zA-Z]{2,}$" or DNSQuery contains "xn--"
+| extend ParentDomainCandidate1 = extract("(([a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]\\.){2}[a-zA-Z]+$)",1, DNSQuery)
+| extend ParentDomainCandidate2 = extract("(([a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]\\.){1}[a-zA-Z]+$)",1, DNSQuery)
+| extend ParentDomain = iif(strlen(ParentDomainCandidate1) < 30, ParentDomainCandidate1, ParentDomainCandidate2)            
+| extend ParentDomain = iif(isnotempty(ParentDomain), ParentDomain, extract("(([a-zA-Z0-9-]+\\.)[a-zA-Z0-9\\-]+)$",1, DNSQuery))
+| summarize QueryCount=dcount (DNSQuery), DNSQuerySet = make_set(DNSQuery) by DeviceName, ParentDomain
+| summarize TotalDomainQueryCount = sum(QueryCount), QueryDetailSet = makeset(pack("DeviceName", DeviceName, "QueriesPerformed", DNSQuerySet)), DeviceCount = dcount(DeviceName) by ParentDomain
+| where DeviceCount <= DeviceThreshold
+| mv-expand QueryDetailSet
+| evaluate bag_unpack(QueryDetailSet, columnsConflict= "keep_source")
+| mv-expand QueriesPerformed
+| summarize QueriesPerformedSet = makeset(QueriesPerformed, 5), ParentDomainQueryCountByHost = dcount(tostring(QueriesPerformed)) by ParentDomain, DeviceName, DeviceCount
+| where ParentDomainQueryCountByHost >= ParentDomainQueryCountByHostThreshold
+| order by ParentDomainQueryCountByHost desc
+| extend ParentDomainDetails = pack("ParentDomain", ParentDomain, "ParentDomainOrgPrevalence", DeviceCount, "ParentDomainQueryCountByHost", ParentDomainQueryCountByHost, "QueriesPerformedSampleSet", QueriesPerformedSet)
+| summarize ParentDomainDetails = make_list(ParentDomainDetails), TotalHostQueryCount = sum(ParentDomainQueryCountByHost) by DeviceName
+| order by TotalHostQueryCount desc

@@ -1,0 +1,21 @@
+// Query to find modifications to forwarding rules and mailbox permissions following risky sign-in
+let startTime=ago(7d);
+let endTime=ago(0d);
+SigninLogs
+| where TimeGenerated between (startTime .. endTime)
+| where RiskLevelDuringSignIn != "none"
+| join (
+    CloudAppEvents
+    | where ActionType in~ ("New-TransportRule","Set-Mailbox", "New-InboxRule", "Set-InboxRule","Set-TransportRule", "Add-MailboxPermission", "Add-MailboxFolderPermission")
+    | extend UserPrincipalName=tostring(RawEventData.UserKey)
+    )
+    on IPAddress, UserPrincipalName
+| summarize
+    by
+    IPAddress,
+    UserPrincipalName,
+    tostring(RawEventData),
+    ActionType,
+    City,
+    CountryCode,
+    ISP

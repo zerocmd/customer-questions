@@ -1,0 +1,29 @@
+// Looks for users with newly assigned admin roles and queries what admin activity that user has performed
+let startTime=ago(7d);
+let endTime=ago(0d);
+let privroles = pack_array("Application Administrator", "Authentication Administrator", "Cloud Application Administrator", "Conditional Access Administrator", "Exchange Administrator", "Global Administrator", "Helpdesk Administrator", "Hybrid Identity Administrator", "Password Administrator", "Privileged Authentication Administrator", "Privileged Role Administrator", "Security Administrator", "SharePoint Administrator", "User Administrator");
+let privusers = AuditLogs 
+    | where TimeGenerated between (startTime .. endTime)
+        and ActivityDisplayName startswith 'Add member to role in PIM completed'
+        and Category == "RoleManagement" 
+    | extend Role = tostring(TargetResources[0].displayName) 
+    | extend Target = tostring(TargetResources[2].userPrincipalName) 
+    | where Role in (privroles) 
+    | distinct Target;
+AuditLogs
+| where TimeGenerated between (startTime .. endTime)
+| extend Actor = tostring(InitiatedBy.user.userPrincipalName)
+| where Actor in~ (privusers)
+| project
+    TimeGenerated,
+    ActivityDisplayName,
+    Actor,
+    Category,
+    AADOperationType,
+    CorrelationId,
+    AdditionalDetails,
+    InitiatedBy,
+    TargetResources,
+    Result,
+    LoggedByService,
+    SourceSystem

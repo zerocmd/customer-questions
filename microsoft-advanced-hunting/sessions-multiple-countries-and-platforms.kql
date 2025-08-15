@@ -1,0 +1,10 @@
+// Query for sessions which contain logons from multiple platforms and countries
+// Returns results where same session ID was observed from two different countries and three different OS versions (assumes a user typically logs in from two devices - a personal phone and a workstation) or specific OS platforms. Thresholds can be tweaked on L10
+let startTime=ago(30d);
+let endTime=ago(0d);
+AADSignInEventsBeta
+| where Timestamp between (startTime .. endTime)
+| extend NormalisedOS = extract("([a-zA-Z]+)", 1,OSPlatform)
+| summarize makeset(UserAgent),make_set(IPAddress),makeset(DeviceName), make_set(Country), CountryCount = dcount(Country), OSCount = dcount(OSPlatform), OSPlatformSet= makeset(OSPlatform), NormOSSet = makeset(NormalisedOS) by AccountUpn,SessionId
+| where CountryCount > 1
+| where (OSCount > 2 or NormOSSet has_all ("windows","macos") or NormOSSet has_all ("windows", "linux") or NormOSSet has_all ("macos", "linux")) 

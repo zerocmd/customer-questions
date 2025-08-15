@@ -1,0 +1,8 @@
+// Summary of Cloud App Events activity by session, where the IP Category is "Risky"
+let startTime=ago(30d);
+let endTime=ago(0d);
+CloudAppEvents
+| where Timestamp between (startTime .. endTime)
+| where IPCategory == "Risky"
+| extend SessionId = tostring(RawEventData.SessionId)
+| summarize ActionsPerformed = makeset(ActionType) by AccountDisplayName, CountryCode, City, IPAddress, tostring(IPTags)

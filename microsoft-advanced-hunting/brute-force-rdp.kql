@@ -1,0 +1,25 @@
+// Query to identify brute force RDP attempts
+let startTime=ago(7d);
+let endTime=ago(0d);
+let FailureThreshold = 20;
+let TimeWindow = 5;
+DeviceLogonEvents
+| where Timestamp between (startTime .. endTime)
+| where RemoteIPType =~ "Public"
+| where ActionType == "LogonFailed"
+| summarize
+    FirstFailure = min(Timestamp),
+    LastFailure = max(Timestamp),
+    FailureCount = dcount(Timestamp),
+    makeset(RemoteIP), make_set(RemoteDeviceName), makeset(FailureReason)
+    by ActionType, AccountName, DeviceName
+| where FailureCount >= FailureThreshold and datetime_diff('minute', LastFailure,FirstFailure) <= TimeWindow
+| join kind = inner (DeviceLogonEvents
+| where ActionType == "LogonSuccess"
+| project LogonTime = Timestamp, ActionType, AccountName, DeviceName
+)on AccountName, DeviceName
+| where datetime_diff('second',LogonTime, LastFailure) > 0 // Only return results where the last logon failure occurred before the logon success
+| summarize arg_min(LogonTime, *)
+| project-away AccountName1, DeviceName1
+| where isnotempty(LogonTime)
+| mv-expand set_RemoteIP

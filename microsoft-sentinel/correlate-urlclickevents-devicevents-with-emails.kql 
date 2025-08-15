@@ -1,0 +1,58 @@
+// Query to correlate activity from UrlClickEvents and DeviceEvents tables with the EmailEvents table to identify the sender information. This can be useful when investigating Entra ID signin alerts where no phishing alerts were observed for the user indicating a possible missed phishing detection.
+
+let startTime=ago(30d);
+let endTime=ago(0d);
+let inputUPN = "johndoe@example.com";
+EmailEvents
+| where TimeGenerated between (startTime .. endTime)
+| extend RecipientEmailAddress = tolower(RecipientEmailAddress)
+| join (IdentityInfo
+    | summarize by MailAddress = tolower(MailAddress), AccountUPN)
+    on $left.RecipientEmailAddress == $right.MailAddress
+| where AccountUPN =~ inputUPN
+| join EmailUrlInfo on NetworkMessageId
+| summarize
+    by
+    Url,
+    UrlDomain,
+    EmailDirection,
+    Subject,
+    SenderDisplayName,
+    SenderFromAddress,
+    SenderMailFromAddress,
+    EmailReceivalTime = TimeGenerated,
+    RecipientEmailAddress,
+    LatestDeliveryAction,
+    DetectionMethods,
+    ConfidenceLevel
+| join (
+    union
+        (UrlClickEvents
+        | extend UrlClickTime = TimeGenerated),
+        (DeviceEvents
+        | where isnotempty(RemoteUrl)
+        | extend
+            UrlClickTime = TimeGenerated,
+            AccountUpn=InitiatingProcessAccountUpn,
+            Url = RemoteUrl)
+    )
+    on $left.RecipientEmailAddress == $right.AccountUpn, Url
+| extend TimeDiff = datetime_diff('second', UrlClickTime, EmailReceivalTime)
+| where TimeDiff > 0 // Only return results where Url click happened after mail was received
+| project
+    SenderDisplayName,
+    SenderFromAddress,
+    SenderMailFromAddress,
+    Subject,
+    UrlClicked = Url,
+    UrlDomain,
+    ActionType,
+    IsClickedThrough,
+    LatestDeliveryAction,
+    DetectionMethods,
+    ConfidenceLevel,
+    EmailReceivalTime,
+    UrlClickTime,
+    TimeDiff, 
+    DeviceName,
+    AccountUpn

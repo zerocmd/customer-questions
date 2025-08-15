@@ -1,0 +1,8 @@
+// Query to find modifications to forwarding rules and mailbox permissions where IPCategory is "Risky"
+let startTime=ago(30d);
+let endTime=ago(0d);
+CloudAppEvents
+| where Timestamp between (startTime .. endTime)
+| where IPCategory == "Risky"
+| where ActionType in~ ("New-TransportRule","Set-Mailbox", "New-InboxRule", "Set-InboxRule","Set-TransportRule", "Add-MailboxPermission", "Add-MailboxFolderPermission")
+| summarize ActionsPerformed = makeset(ActionType) by AccountDisplayName, CountryCode, City, IPAddress, tostring(IPTags)

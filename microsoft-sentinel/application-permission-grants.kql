@@ -1,0 +1,30 @@
+// Retrieve list of users who have added delegated or application permissions to an Azure AD app and list the permissions granted
+let startTime=ago(7d);
+let endTime=ago(0d);
+let users=
+    AuditLogs
+    | where TimeGenerated between (startTime .. endTime)
+    | where OperationName in ("Add app role assignment to service principal","Add delegated permission grant")
+    | extend Actor = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)
+    | distinct Actor; 
+let delegatedaccess=
+    AuditLogs
+    | where TimeGenerated between (startTime .. endTime)
+    | where OperationName has "Add delegated permission grant"
+    | extend GrantedPerms = tostring(parse_json(tostring(parse_json(tostring(TargetResources[0].modifiedProperties))[0].newValue)))
+    | extend ['Permissions granted'] = split(GrantedPerms, ' ')
+    | extend Actor = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)
+    | where Actor in (users)
+    | extend ['Service Principal ObjectId'] = tostring(TargetResources[1].id)
+    | project-away DurationMs, OperationVersion, ResultSignature, Level, Resource, ResourceGroup, ResourceId, GrantedPerms;
+let appaccess=
+    AuditLogs
+    | where TimeGenerated between (startTime .. endTime)
+    | where OperationName has "Add app role assignment to service principal"
+    | extend GrantedPerms = tostring(parse_json(tostring(parse_json(tostring(TargetResources[0].modifiedProperties))[1].newValue)))
+    | extend ['Permissions granted'] = split(GrantedPerms, ' ')
+    | extend Actor = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)
+    | where Actor in (users)
+    | extend ['Service Principal ObjectId'] = tostring(TargetResources[1].id)
+    | project-away DurationMs, OperationVersion, ResultSignature, Level, Resource, ResourceGroup, ResourceId, GrantedPerms;
+union delegatedaccess, appaccess
