@@ -1,4 +1,4 @@
-// Query to find other users who have recieved email from the same sender, following an 'Email reported by user as malware or phish' alert
+// Query to find other users who have recieved email from the same sender, following an 'Email reported by user as malware or phish' alert. It correlates alert information with email event details to provide a comprehensive view of potentially malicious communications that may have initially bypassed automatic blocking mechanisms and were delivered to the recipients. 
 let startTime=ago(7d);
 let endTime=ago(0d);
 AlertInfo

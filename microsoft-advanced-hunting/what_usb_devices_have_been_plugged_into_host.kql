@@ -1,13 +1,11 @@
 // --- Inputs ---
 // Input hostname
 // Identify all USB drives or devices that have been plugged into the host 
-// in the past 90 day's
-
-let lookback   = 90d;
+let startTime=ago(30d);
+let endTime=ago(0d);
 let targetHost = "HOSTNAME_OR_FQDN";  // <- replace with the device name
-
 DeviceEvents
-| where Timestamp > ago(lookback)
+| where Timestamp between (startTime .. endTime)
 | where ActionType == "UsbDriveMounted"
 | where DeviceName =~ targetHost
 | extend af = parse_json(AdditionalFields)

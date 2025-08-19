@@ -1,4 +1,4 @@
-// Query to verify successful first or second factor authentication from an IP. 
+// Query to verify successful first or second factor authentication from an IP. This is useful to verify if all of the authentication attempts from an IP failed for suspicious Entra ID signin alerts, indicating failed account compromise. This question can also identify all users with successful first or second factor authentication attempts from an IP even if the corresponding logons failed.
 let startTime=ago(7d);
 let endTime=ago(0d);
 let AlertIP = "8.8.8.0";

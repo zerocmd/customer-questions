@@ -1,5 +1,5 @@
 //Query to identify DNS tunneling:
-// This question identifies potential instances of DNS tunneling activity based on telemetry gathered from Microsoft Defender for Endpoint (MDE) by looking for a host performing a large number of DNS requests for unusually long, non-existent domains where the corresponding top-level domains have been observed on a small number of hosts. DNS tunneling is a covert technique that exploits the trusted nature of DNS protocol to create hidden communication channels by encoding data within DNS queries and responses. Attackers use it for command-and-control (C2) communications, data exfiltration, malware staging, and bypassing network restrictions—all while evading traditional security controls that typically allow DNS traffic unfiltered. The data returned by this question includes the device involved, the list of suspicious DNS queries, the associated top-level domains and the number of queries performed from a host.
+// This query identifies potential instances of DNS tunneling activity based on telemetry gathered from Microsoft Defender for Endpoint (MDE) by looking for a host performing a large number of DNS requests for unusually long, non-existent domains where the corresponding top-level domains have been observed on a small number of hosts. DNS tunneling is a covert technique that exploits the trusted nature of DNS protocol to create hidden communication channels by encoding data within DNS queries and responses. Attackers use it for command-and-control (C2) communications, data exfiltration, malware staging, and bypassing network restrictions—all while evading traditional security controls that typically allow DNS traffic unfiltered. The data returned by this question includes the device involved, the list of suspicious DNS queries, the associated top-level domains and the number of queries performed from a host.
 let DNSHostnameLengthCheck = 40; // This threshold defines the minimum dns query char length to indicate a DNS tunnel
 let DeviceThreshold = 3;// This threshold defines the maximum number of devices on which the top-level domain can be seen to be considered a DNS tunnel
 let ParentDomainQueryCountByHostThreshold = 20;// This threshold defines the minimum number of queries from a host for a parent domain to indicate a DNS tunnel
@@ -25,6 +25,7 @@ union DeviceEvents, DeviceNetworkEvents
 | where DeviceCount <= DeviceThreshold
 | mv-expand QueryDetailSet
 | evaluate bag_unpack(QueryDetailSet, columnsConflict= "keep_source")
+| extend QueriesPerformed = column_ifexists("QueriesPerformed", todynamic("[]")), DeviceName = column_ifexists("DeviceName", "")
 | mv-expand QueriesPerformed
 | summarize QueriesPerformedSet = makeset(QueriesPerformed, 5), ParentDomainQueryCountByHost = dcount(tostring(QueriesPerformed)) by ParentDomain, DeviceName, DeviceCount
 | where ParentDomainQueryCountByHost >= ParentDomainQueryCountByHostThreshold

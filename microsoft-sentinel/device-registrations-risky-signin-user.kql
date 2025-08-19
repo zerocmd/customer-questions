@@ -7,7 +7,7 @@ AuditLogs
   | where OperationName =~ "Add registered owner to device" 
   | where Identity =~ "Device Registration Service"
   | extend UserPrincipalName = tostring(TargetResources[0].userPrincipalName)
-  | where UserPrincipalName == AlertUPN
+  | where UserPrincipalName =~ AlertUPN
   | extend DeviceObjectId = trim('"', tostring(TargetResources[0].modifiedProperties[0].newValue))
   | extend DeviceDisplayName = trim('"', tostring(TargetResources[0].modifiedProperties[1].newValue))
   | project DeviceRegistrationTimestamp=TimeGenerated, CorrelationId, UserPrincipalName, DeviceObjectId, DeviceDisplayName

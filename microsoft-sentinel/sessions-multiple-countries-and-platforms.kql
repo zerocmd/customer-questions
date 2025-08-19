@@ -1,7 +1,9 @@
-// Query for sessions which contain logons from multiple platforms and countries
-// Returns results where same session ID was observed from two different countries and three different OS versions (assumes a user typically logs in from two devices - a personal phone and a workstation) or specific OS platforms. Thresholds can be tweaked on L17
+// Query for sessions which contain logons from multiple platforms and countries. This can help identify scenarios of stolen session tokens being used from new devices, countries.  
+// Returns results where same session ID was observed from two different countries and specific workstation OS platforms or three different OS versions (assumes a user typically logs in from two devices - a personal phone and a workstation).
 let startTime=ago(7d);
 let endTime=ago(0d);
+let OSCountThreshold = 2;
+let CountryCountThreshold = 1;
 union
     (SigninLogs
     | where TimeGenerated between (startTime .. endTime)
@@ -14,4 +16,4 @@ union
 | extend OS = tostring(DeviceDetail1.operatingSystem)
 | extend OSPlatform = extract("([a-zA-Z]+)", 1,OS)
 | summarize makeset(UserAgent),make_set(IPAddress), make_set(Location), CountryCount = dcount(Location), OSCount = dcount(OS), OSSet = makeset(OS), OSPlatformSet= makeset(OSPlatform) by UserPrincipalName,SessionId
-| where CountryCount > 1 and (OSCount > 2 or OSPlatformSet has_all ("windows","macos") or OSSet has_all ("windows", "linux")) 
+| where CountryCount > CountryCountThreshold and (OSCount > OSCountThreshold or OSPlatformSet has_all ("windows","macos") or OSPlatformSet has_all ("windows", "linux") or OSPlatformSet has_all ("macos", "linux"))

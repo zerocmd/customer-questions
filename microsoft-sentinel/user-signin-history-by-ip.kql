@@ -15,7 +15,7 @@ union
         LocationDetails1=parse_json(LocationDetails),
         DeviceDetail1= parse_json(DeviceDetail)
     )
-| where UserPrincipalName == inputUPN
+| where UserPrincipalName =~ inputUPN
 | mv-expand todynamic(AuthenticationDetails)
 | extend
     authenticationMethod = AuthenticationDetails.authenticationMethod,
