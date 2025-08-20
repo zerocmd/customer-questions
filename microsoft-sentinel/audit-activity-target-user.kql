@@ -1,4 +1,4 @@
-// Query to summarize activity targeting a specific user
+// This query identifies audit log activities performed on a specific user across Microsoft 365 environments. It captures information about user-related activities, including the initiated actions, initiating user, IP addresses, and associated applications. This can be useful for a compromised to verify who performed actions such as password resets, mfa registrations.
 let startTime=ago(7d);
 let endTime=ago(0d);
 let TargetUser = "johndoe@example.com";
@@ -7,7 +7,7 @@ AuditLogs
 | extend TargetdisplayName = TargetResources[0].displayName
 | extend type = TargetResources[0].type
 | extend Targetupn = TargetResources[0].userPrincipalName
-| where Targetupn == TargetUser
+| where Targetupn =~ TargetUser
 | extend SourceIP = InitiatedBy.user.ipAddress
 | extend InitiatingUser = InitiatedBy.user.userPrincipalName
 | extend InitiatingApp = InitiatedBy.app.displayName

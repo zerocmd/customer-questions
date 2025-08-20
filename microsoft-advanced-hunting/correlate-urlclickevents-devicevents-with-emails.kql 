@@ -1,5 +1,4 @@
 // Query to correlate activity from UrlClickEvents and DeviceEvents tables with the EmailEvents table to identify the sender information. This can be useful when investigating Entra ID signin alerts where no phishing alerts were observed for the user indicating a possible missed phishing detection.
-
 let startTime=ago(7d);
 let endTime=ago(0d);
 let inputUPN = "johndoe@example.com";

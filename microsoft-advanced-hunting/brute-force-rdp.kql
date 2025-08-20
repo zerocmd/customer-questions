@@ -1,4 +1,4 @@
-// Query to identify brute force RDP attempts
+// This query investigates potential brute force or password guessing attacks by identifying accounts with a high number of login failures within a short time frame, followed by a successful login. It analyzes device logon events, focusing on public IP addresses and tracking failed login attempts.
 let startTime=ago(7d);
 let endTime=ago(0d);
 let FailureThreshold = 20;

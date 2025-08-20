@@ -1,4 +1,4 @@
-// Query to identify emails accessed (MailItemsAccessed event) from a specific IP address. CloudAppEvents data is correlated with EmailAttachmentInfo to identify email attachments 
+// This query identifies emails accessed('MailItemsAccessed' ActionType) from an IP address per the CloudAppEvents table. This can be useful in identifying what emails were accessed by an attacker from a malicious IP address after a successful account compromise. Query also correlates EmailAttachmentInfo, EmailUrlInfo to identify any email attachments, urls that might have been accessed.
 let startTime=ago(7d);
 let endTime=ago(0d);
 let AlertIP = "8.8.8.0";

@@ -1,4 +1,4 @@
-// Query to find the last logon for a device before a security alert involving the device
+//This query determines the closest logon on a device before a security alert which can identify the user involved and the origin device. This can be useful to identify the user involved in alerts that don't contain user information such as Defender for Identity alerts or alerts for shared account activity. 
 let startTime=ago(7d);
 let endTime=ago(0d);
 let AlertDeviceName = "workstation";

@@ -1,4 +1,4 @@
-// Query to get all events performed by a process across device tables 
+// Query to get all events performed by a process across device tables. This can help trace the full lifecycle and interactions of a potentially suspicious process or one that has triggered an alert.
 let startTime=ago(7d);
 let endTime=ago(0d);
 let AlertProcessUniqueId = "1234567891011";
