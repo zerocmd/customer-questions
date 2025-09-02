@@ -1,4 +1,4 @@
-// This query findsPowerShell commands containing file download methods (potential malware staging or data exfiltration)
+// This query finds PowerShell commands containing file download methods (potential malware staging or data exfiltration)
 
   #event_simpleName=CommandHistory event_platform="Win"
   | (CommandHistory=*Invoke-WebRequest* OR CommandHistory=*Net.WebClient* OR CommandHistory=*Start-BitsTransfer* 

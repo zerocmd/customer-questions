@@ -1,5 +1,5 @@
 
-// This query findsclipboard data collection attempts across PowerShell execution methods (MITRE T1115)
+// This query finds clipboard data collection attempts across PowerShell execution methods (MITRE T1115)
 
 #event_simpleName=/(Script|ProcessRollup2|CommandHistory)/
   | case {

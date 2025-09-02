@@ -1,4 +1,4 @@
-// This query findscommercial VPN client execution for monitoring unauthorized network tunneling and potential data exfiltration
+// This query finds commercial VPN client execution for monitoring unauthorized network tunneling and potential data exfiltration
 
 #event_simpleName=ProcessRollup2 AND
     ((FileName=/openvpn.exe/i OR CommandLine=*openvpn*) OR

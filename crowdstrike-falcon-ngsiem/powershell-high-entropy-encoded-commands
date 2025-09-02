@@ -1,5 +1,5 @@
 
-// This query findsall powershell calls using encoded strings
+// This query finds all PowerShell calls using encoded strings
 
 #event_simpleName=ProcessRollup2 
     | event_platform=Win 
