@@ -1,0 +1,19 @@
+// This query finds commercial VPN client execution for monitoring unauthorized network tunneling and potential data exfiltration
+
+#event_simpleName=ProcessRollup2 AND
+    ((FileName=/openvpn.exe/i OR CommandLine=*openvpn*) OR
+    (FileName=/vpnd.exe/i OR CommandLine=*vpnd*) OR
+    (FileName=/protonvpn.client.exe/i OR CommandLine=*protonvpn*) OR
+    (FileName=/nordvpn.exe/i OR CommandLine=*nordvpn*) OR
+    (FileName=/windscribe.exe/i OR CommandLine=*windscribe*) OR
+    (FileName=/surfshark.exe/i OR CommandLine=*surfshark*) OR
+    (FileName=/cyberghost.exe/i OR CommandLine=*cyberghost*) OR
+    (FileName=/hotspotshield.exe/i OR CommandLine=*hotspotshield*) OR
+    (FileName=/hsswd.exe/i OR CommandLine=*hsswd*) OR
+    (FileName=/torguard.exe/i OR CommandLine=*torguard*) OR
+    (FileName=/pia_manager.exe/i OR CommandLine=*pia_manager*) OR
+    (FileName=/vpnagent.exe/i OR CommandLine=*vpnagent*) OR
+    (FileName=/vpnclient.exe/i OR CommandLine=*vpnclient*) OR
+    (FileName=/cvpnd.exe/i OR CommandLine=*cvpnd*) OR
+    (FileName=/expressvpn.exe/i OR CommandLine=*expressvpn*) OR
+    (FileName=/vpn.exe/i OR CommandLine=*vpn.exe*))

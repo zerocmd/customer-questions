@@ -1,0 +1,7 @@
+// This query finds WMIC remote process execution with extracted target hosts and commands for lateral movement
+
+#event_simpleName=ProcessRollup2
+| event_platform=Win ImageFileName=/wmic.exe/i 
+| CommandLine=/\/node:.* process call/i
+| CommandLine=/\/node\:\"?(?<RemoteHost>.+?)[\s\"]/i
+| CommandLine=/process call create\s+\"?(?<RemoteCommand>.+?)\"?\s*$/i

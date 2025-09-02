@@ -1,0 +1,8 @@
+
+// This query finds DNS requests from suspicious binaries to non-Microsoft/Google domains (potential C2 or malware communications)
+
+#event_simpleName=DnsRequest event_platform="Win"
+  | ContextBaseFileName = /powershell.exe|certutil.exe|regsvr32.exe|rundll32.exe|wscript.exe|cscript.exe|mshta.exe|bitsadmin.exe/iF
+  | DomainName != /.*.(microsoft|windows|office|azure|msftncsi).com$/i
+  | DomainName != /.*.(google|googleapis|gstatic).com$/i
+
