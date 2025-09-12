@@ -1,0 +1,7 @@
+// This query finds PowerShell commands containing file download methods (potential malware staging or data exfiltration)
+
+  #event_simpleName=CommandHistory event_platform="Win"
+  | (CommandHistory=*Invoke-WebRequest* OR CommandHistory=*Net.WebClient* OR CommandHistory=*Start-BitsTransfer* 
+     OR CommandHistory=*DownloadString* OR CommandHistory=*DownloadFile* OR CommandHistory=*DownloadData* 
+     OR CommandHistory=*WebRequest* OR CommandHistory=*HttpWebRequest* OR CommandHistory=*RestMethod* 
+     OR CommandHistory=*curl* OR CommandHistory=*wget* OR CommandHistory=*bitsadmin*)

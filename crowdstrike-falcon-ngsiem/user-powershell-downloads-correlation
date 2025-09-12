@@ -1,0 +1,4 @@
+// This query finds users executing PowerShell download commands by correlating process events with user identity data
+
+  #event_simpleName=ProcessRollup2 event_platform="Win" ImageFileName=/powershell.exe/i CommandLine=/(Invoke-WebRequests|Net.WebClient|Start-BitsTransfer)/i
+  | join({#event_simpleName=UserIdentity | groupby([aid, AuthenticationId, UserName])}, field=AuthenticationId, include=UserName)

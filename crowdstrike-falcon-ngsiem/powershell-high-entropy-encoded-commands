@@ -1,0 +1,10 @@
+
+// This query finds all PowerShell calls using encoded strings
+
+#event_simpleName=ProcessRollup2 
+    | event_platform=Win 
+    | ImageFileName=/\\(powershell|pwsh)\.exe/i
+    | CommandLine=/\s(|[\^])-(|[\^])[e]{1,2}[ncodema^]*\s(?<base64String>\S+)/i
+    | cmdLength := length("CommandLine")
+    | b64Entropy := shannonEntropy("base64String")
+    | b64Entropy > 3.5
