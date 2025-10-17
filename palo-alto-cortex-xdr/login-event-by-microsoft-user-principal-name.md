@@ -5,6 +5,6 @@ dataset = xdr_data
 | alter domain_name = replace(json_extract(event, "$.TargetDomainName"), "\"","")
 | filter domain_name = "AzureAD"
 | alter username = replace(json_extract(event, "$.TargetUserName"), "\"","")
-| filter username = "userprincipalname@contoso.com"
+| filter username = "MICROSOFT_ENTRA_USER_PRINCIPAL_NAME"
 | comp count(UserName) as login_count by agent_hostname, username, domain_name
 ```
