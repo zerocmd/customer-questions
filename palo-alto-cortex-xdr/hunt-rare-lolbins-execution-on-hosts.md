@@ -1,5 +1,5 @@
 ```
-config case_sensitive = falseconfig case_sensitive = false
+config case_sensitive = false
 | preset = xdr_process 
 | filter action_process_image_name in (
     "wmic.exe", "certutil.exe", "bitsadmin.exe", "regsvr32.exe", "mshta.exe", 
