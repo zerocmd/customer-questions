@@ -15,42 +15,23 @@ Investigation (with variable)
 - `$SHA_256` - SHA256, SHA1, or MD5 hash to hunt for
 
 
-## UDM Query
+## UDM Search
 ```
-(hash = "$SHA_256")
-
-match:
-  principal.hostname
-
-outcome:
-  $detection_count = count(principal.hostname)
-  $threat_names = array_distinct(security_result.threat_name)
-  $file_paths = array_distinct(target.file.full_path)
-  $severities = array_distinct(security_result.severity)
-  $actions = array_distinct(security_result.action)
-  $users = array_distinct(principal.user.userid)
-
-order:
-  metadata.event_timestamp.seconds desc
-
-limit:
-  500
+hash = "$SHA_256"
 ```
 
 ## Detection Logic
 - Searches for hash in file, process, and target process fields
-- Groups by affected hostname
-- Collects threat classification and file locations
-- Chronological ordering for timeline analysis
+- Returns all matching events for timeline analysis
 
 ## Output Fields
-- `principal.hostname` - Affected endpoints
-- `$detection_count` - Detections per host
-- `$threat_names` - How EDR/XDR classified it
-- `$file_paths` - File locations on disk
-- `$severities` - Alert severity levels
-- `$actions` - Automated responses
-- `$users` - Users associated with file
+- `principal.hostname` - Affected endpoint
+- `principal.user.userid` - User associated with event
+- `target.file.full_path` - File location on disk
+- `target.file.sha256` - File hash
+- `security_result.threat_name` - How EDR/XDR classified it
+- `security_result.severity` - Alert severity level
+- `security_result.action` - Automated response taken
 
 ## Usage Examples
 

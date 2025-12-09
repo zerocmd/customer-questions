@@ -14,40 +14,22 @@ Investigation (with variable)
 ## Variables
 - `$FILE_NAME` - Filename or pattern to search for (supports regex)
 
-## UDM Query
+## UDM Search
 ```
-(metadata.event_type = "FILE_CREATION" OR metadata.event_type = "FILE_MODIFICATION")
-re.regex(target.file.full_path, `(?i)$FILE_NAME`)
-
-match:
-  principal.hostname, target.file.full_path
-
-outcome:
-  $event_count = count(target.file.full_path)
-  $processes = array_distinct(principal.process.file.full_path)
-  $users = array_distinct(principal.user.userid)
-  $file_hashes = array_distinct(target.file.sha256)
-
-order:
-  metadata.event_timestamp.seconds desc
-
-limit:
-  300
+(metadata.event_type = "FILE_CREATION" OR metadata.event_type = "FILE_MODIFICATION") AND target.file.full_path = /(?i)$FILE_NAME/
 ```
 
 ## Detection Logic
 - Searches for FILE_CREATION and FILE_MODIFICATION events
 - Uses regex matching for flexible file name searches
-- Groups by hostname and file path
-- Captures creating process and user
 
 ## Output Fields
 - `principal.hostname` - Endpoint where file was created
+- `principal.user.userid` - User who created/modified file
+- `principal.process.file.full_path` - Process that created/modified file
 - `target.file.full_path` - Full file path
-- `$event_count` - Number of times created/modified
-- `$processes` - Processes that created/modified file
-- `$users` - Users involved
-- `$file_hashes` - SHA256 hashes
+- `target.file.sha256` - File hash
+- `metadata.event_timestamp` - When the event occurred
 
 ## Usage Examples
 

@@ -1,7 +1,7 @@
 # Blocked Threats Summary
 
 ## Description
-Summarizes threats that were successfully blocked by endpoint protection, showing effectiveness of prevention controls.
+Summarizes high severity threats that were successfully blocked by endpoint protection, showing effectiveness of prevention controls.
 
 ## Data Sources
 Endpoint Detection and Response (EDR) Alerts
@@ -11,9 +11,10 @@ Endpoint Detection and Response (EDR) Alerts
 ## Query Type
 Threat Hunting (no variables)
 
-## UDM Query
+## YARA-L 2.0
 ```
 events:
+  (security_result.severity = "HIGH" OR security_result.severity = "CRITICAL")
   (security_result.action = "BLOCK" or security_result.action = "QUARANTINE")
   security_result.threat_name != ""
 

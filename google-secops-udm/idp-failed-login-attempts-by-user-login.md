@@ -11,7 +11,7 @@ Identity Provider (IDP)
 ## Query Type
 Threat Hunting (no variables)
 
-## UDM Query
+## YARA-L 2.0
 ```
 events:
   metadata.event_type = "USER_LOGIN"

@@ -14,37 +14,20 @@ Investigation (with variable)
 ## Variables
 - `$IP_ADDRESS` - Source IP address to investigate
 
-## UDM Query
+## UDM Search
 ```
-metadata.event_type = "USER_LOGIN"
-principal.ip = "$IP_ADDRESS"
-
-match:
-  target.user.email_addresses, target.user.product_object_id, security_result.action
-
-outcome:
-  $attempt_count = count(target.user.product_object_id)
-  $user_agents = array_distinct(network.http.user_agent)
-
-order:
-  $attempt_count desc
-
-limit:
-  200
+metadata.event_type = "USER_LOGIN" AND principal.ip = "$IP_ADDRESS" AND target.user.email_addresses != ""
 ```
 
 ## Detection Logic
 - Filters for USER_LOGIN events from specific IP
-- Groups by user and action type
-- Counts attempts per user
-- Collects unique user agents
 
 ## Output Fields
 - `target.user.email_addresses` - Email address (Okta User Login, Entra User Principal Name)
 - `target.user.product_object_id` - User GUID (Okta User ID, Entra Object ID)
 - `security_result.action` - Success/failure status
-- `$attempt_count` - Number of attempts per user
-- `$user_agents` - List of user agents used
+- `network.http.user_agent` - User agent string
+- `metadata.event_timestamp` - When the login occurred
 
 ## Usage Example
 Replace `$IP_ADDRESS` with known suspicious IP address

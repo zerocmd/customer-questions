@@ -11,7 +11,7 @@ Endpoint Detection and Response (EDR)
 ## Query Type
 Threat Hunting (no variables)
 
-## UDM Query
+## YARA-L 2.0
 ```
 events:
   metadata.event_type = "NETWORK_CONNECTION"

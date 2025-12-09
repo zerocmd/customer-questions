@@ -14,41 +14,22 @@ Investigation (with variable)
 ## Variables
 - `$HOSTNAME` - Endpoint hostname to investigate
 
-## UDM Query
+## UDM Search
 ```
-metadata.event_type = "NETWORK_CONNECTION"
-principal.hostname = "$HOSTNAME"
-target.ip != ""
-
-match:
-  target.ip, target.port by 1h
-
-outcome:
-  $connection_count = count(target.ip)
-  $processes = array_distinct(principal.process.file.full_path)
-  $bytes_sent = sum(network.sent_bytes)
-  $bytes_received = sum(network.received_bytes)
-  $total_bytes = $bytes_sent + $bytes_received
-
-order:
-  $connection_count desc
-
-limit:
-  300
+metadata.event_type = "NETWORK_CONNECTION" AND principal.hostname = "$HOSTNAME" AND target.ip != ""
 ```
 
 ## Detection Logic
 - Filters for NETWORK_CONNECTION events from specific host
 - Excludes empty target IPs
-- Groups by destination IP and port per hour
-- Aggregates connection counts and data transfer volume
 
 ## Output Fields
-- `target.ip` - Destination IP addresses
-- `target.port` - Destination ports
-- `$connection_count` - Number of connections
-- `$processes` - Processes making connections
-- `$total_bytes` - Total data transferred
+- `target.ip` - Destination IP address
+- `target.port` - Destination port
+- `principal.process.file.full_path` - Process making connection
+- `network.sent_bytes` - Bytes sent
+- `network.received_bytes` - Bytes received
+- `metadata.event_timestamp` - When the connection occurred
 
 ## Use Cases
 - Investigate suspected compromised host

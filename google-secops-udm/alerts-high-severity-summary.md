@@ -11,7 +11,7 @@ Endpoint Detection and Response (EDR) Alerts
 ## Query Type
 Threat Hunting (no variables)
 
-## UDM Query
+## YARA-L 2.0
 ```
 events:
   (metadata.log_type = "CS_EDR" OR metadata.log_type = "CS_DETECTS" OR metadata.log_type = "CORTEX_XDR")
