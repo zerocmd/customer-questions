@@ -12,11 +12,11 @@ Endpoint Detection and Response (EDR)
 Investigation (with variable)
 
 ## Variables
-- `$FILE_NAME` - Filename or pattern to search for (supports regex)
+- `FILE_NAME` - Filename or pattern to search for (supports regex)
 
 ## UDM Search
 ```
-(metadata.event_type = "FILE_CREATION" OR metadata.event_type = "FILE_MODIFICATION") AND target.file.full_path = /(?i)$FILE_NAME/
+(metadata.event_type = "FILE_CREATION" OR metadata.event_type = "FILE_MODIFICATION") AND target.file.full_path = /(?i)FILE_NAME/
 ```
 
 ## Detection Logic
@@ -34,24 +34,16 @@ Investigation (with variable)
 ## Usage Examples
 
 ### Search for specific filename:
-```
-$FILE_NAME = "malware\.exe"
-```
+`$FILE_NAME = "malware\.exe"`
 
 ### Search for file extension:
-```
-$FILE_NAME = ".*\.docm$"  # Macro-enabled documents
-```
+`$FILE_NAME = ".*\.docm$"  # Macro-enabled documents`
 
 ### Search for files in specific directory:
-```
-$FILE_NAME = "C:\\\\Windows\\\\Temp\\\\.*\.bat"
-```
+`$FILE_NAME = "C:\\\\Windows\\\\Temp\\\\.*\.bat"`
 
 ### Search for known malware artifacts:
-```
-$FILE_NAME = "(beacon|cobalt|mimikatz)"
-```
+`$FILE_NAME = "(beacon|cobalt|mimikatz)"`
 
 ## Common Suspicious Files
 - `.exe`, `.dll`, `.scr` in temp folders

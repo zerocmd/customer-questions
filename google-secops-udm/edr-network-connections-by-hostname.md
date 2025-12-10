@@ -12,11 +12,11 @@ Endpoint Detection and Response (EDR)
 Investigation (with variable)
 
 ## Variables
-- `$HOSTNAME` - Endpoint hostname to investigate
+- `HOSTNAME` - Endpoint hostname to investigate
 
 ## UDM Search
 ```
-metadata.event_type = "NETWORK_CONNECTION" AND principal.hostname = "$HOSTNAME" AND target.ip != ""
+metadata.event_type = "NETWORK_CONNECTION" AND principal.hostname = "HOSTNAME" AND target.ip != ""
 ```
 
 ## Detection Logic
@@ -40,6 +40,4 @@ metadata.event_type = "NETWORK_CONNECTION" AND principal.hostname = "$HOSTNAME" 
 
 ## Enhancements
 Add geographic filtering:
-```
-principal.ip_geo_artifact.location.country_or_region != ""
-```
+`principal.ip_geo_artifact.location.country_or_region != ""`
