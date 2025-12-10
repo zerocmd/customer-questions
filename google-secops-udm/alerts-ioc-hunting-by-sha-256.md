@@ -12,12 +12,12 @@ Endpoint Detection and Response (EDR) Alerts
 Investigation (with variable)
 
 ## Variables
-- `$SHA_256` - SHA256, SHA1, or MD5 hash to hunt for
+- `SHA_256` - SHA256, SHA1, or MD5 hash to hunt for
 
 
 ## UDM Search
 ```
-hash = "$SHA_256"
+hash = "SHA_256"
 ```
 
 ## Detection Logic
@@ -36,20 +36,17 @@ hash = "$SHA_256"
 ## Usage Examples
 
 ### Known Malware Hash
-```
-$SHA_256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-```
+`$SHA_256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"`
+
 
 ### Hash from Threat Intel Feed
-```
-$SHA_256 = "[HASH_FROM_FEED]"
-```
+`$SHA_256 = "[HASH_FROM_FEED]"`
+
 
 ### Bulk Hash Hunting
 For multiple hashes, use:
-```
-(hash = /hash1|hash2|hash3/)
-```
+`(hash = /hash1|hash2|hash3/)`
+
 
 ## IOC Sources
 - Threat intelligence feeds

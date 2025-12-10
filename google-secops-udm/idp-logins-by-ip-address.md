@@ -12,11 +12,11 @@ Identity Provider (IDP)
 Investigation (with variable)
 
 ## Variables
-- `$IP_ADDRESS` - Source IP address to investigate
+- `IP_ADDRESS` - Source IP address to investigate
 
 ## UDM Search
 ```
-metadata.event_type = "USER_LOGIN" AND principal.ip = "$IP_ADDRESS" AND target.user.email_addresses != ""
+metadata.event_type = "USER_LOGIN" AND principal.ip = "IP_ADDRESS" AND target.user.email_addresses != ""
 ```
 
 ## Detection Logic
@@ -30,4 +30,4 @@ metadata.event_type = "USER_LOGIN" AND principal.ip = "$IP_ADDRESS" AND target.u
 - `metadata.event_timestamp` - When the login occurred
 
 ## Usage Example
-Replace `$IP_ADDRESS` with known suspicious IP address
+Replace `IP_ADDRESS` with known suspicious IP address
