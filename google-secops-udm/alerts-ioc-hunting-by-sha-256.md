@@ -17,7 +17,7 @@ Investigation (with variable)
 
 ## UDM Search
 ```
-hash = "$SHA_256"
+hash = "SHA_256"
 ```
 
 ## Detection Logic
