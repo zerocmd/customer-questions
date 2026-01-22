@@ -15,12 +15,12 @@ Threat Hunting (no variables)
 ```
 events:
   metadata.event_type = "NETWORK_CONNECTION"
-  principal.process.file.full_path != ""
+  $process_name = principal.process.file.full_path
   target.ip != ""
   NOT re.regex(principal.process.file.full_path, `(?i)(chrome\.exe|firefox\.exe|msedge\.exe|teams\.exe|outlook\.exe|onedrive\.exe)`)
-
+  
 match:
-  principal.process.file.full_path over 24h
+  $process_name over 24h
 
 outcome:
   $unique_hosts = count_distinct(principal.hostname)
