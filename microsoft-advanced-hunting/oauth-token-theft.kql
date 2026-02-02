@@ -1,0 +1,39 @@
+// =============================================================================
+// OAUTH TOKEN THEFT / SAAS SUPPLY CHAIN COMPROMISE
+// =============================================================================
+// PURPOSE: Detect suspicious OAuth application consent grants that could indicate
+// token theft or malicious app authorization used for data access.
+//
+// THREAT CONTEXT: The 2025 Salesforce ecosystem attacks exploited OAuth tokens
+// from third-party integrations (like Salesloft Drift) to exfiltrate data from
+// hundreds of organizations. Attackers don't need credentials—just a compromised
+// OAuth token from a trusted integration.
+//
+// MITRE ATT&CK: T1550.001 (Application Access Token), T1098.003 (Additional Cloud Roles)
+// =============================================================================
+let startTime=ago(30d);
+let endTime=ago(0d);
+CloudAppEvents
+| where Timestamp between (startTime .. endTime)
+// TARGET ACTIONS: OAuth-related consent and permission grants
+// These actions allow applications to access user/org data.
+// Attackers abuse these to establish persistent access without credentials.
+| where ActionType in~ (
+    "Consent to application",           // User consents to app permissions
+    "Add OAuth2PermissionGrant",        // Delegated permission added
+    "Add app role assignment grant to user",  // App role assigned
+    "Add delegated permission grant"    // API permissions granted
+)
+// Extract the application name/ID for analysis
+| extend AppName = tostring(RawEventData.Target[0].ID)
+// Aggregate to identify patterns:
+// - Multiple consents from same user (potential compromise)
+// - Consents from multiple countries (impossible travel)
+| summarize 
+    ConsentCount = count(),
+    IPAddresses = make_set(IPAddress),
+    Countries = make_set(CountryCode)
+    by AccountDisplayName, AppName, ActionType
+// FLAG: Multiple consents OR geographic anomaly suggests compromise
+| where ConsentCount > 1 or array_length(Countries) > 1
+| order by ConsentCount desc

@@ -1,0 +1,45 @@
+// =============================================================================
+// DATA EXFILTRATION TO CLOUD STORAGE DETECTION - REVISED
+// =============================================================================
+// PURPOSE: Detect connections to cloud storage services commonly used
+// for exfiltration in double-extortion ransomware attacks.
+//
+// REVISION: Uses connection count instead of bytes transferred since
+// SentBytes isn't available in all tenant schemas.
+//
+// MITRE ATT&CK: T1567.002 (Exfiltration to Cloud Storage)
+// =============================================================================
+let startTime=ago(7d);
+let endTime=ago(0d);
+// KNOWN EXFILTRATION DESTINATIONS
+// These services offer easy anonymous uploads and are frequently abused
+let ExfilDomains = dynamic([
+    "mega.nz",           // Encrypted cloud storage, popular with ransomware
+    "mega.io",           // Alternate Mega domain
+    "dropbox.com",       // May indicate compromised business account
+    "anonfiles.com",     // Anonymous file hosting
+    "file.io",           // Ephemeral file sharing
+    "transfer.sh",       // Command-line file sharing
+    "gofile.io",         // Anonymous uploads
+    "wetransfer.com",    // Large file transfers
+    "sendspace.com",     // Free file hosting
+    "mediafire.com",     // File hosting
+    "rapidshare.com"     // File hosting
+]);
+DeviceNetworkEvents
+| where Timestamp between (startTime .. endTime)
+// Match connections to known exfil destinations
+| where RemoteUrl has_any (ExfilDomains)
+    or RemoteIP has_any (ExfilDomains)
+// Aggregate by device and destination to identify patterns
+| summarize 
+    ConnectionCount = count(),
+    FirstConnection = min(Timestamp),
+    LastConnection = max(Timestamp),
+    Ports = make_set(RemotePort, 10)
+    by DeviceName, RemoteUrl, RemoteIP
+// THRESHOLD: Flag devices with multiple connections to exfil sites
+// CUSTOMIZE: Adjust based on your environment's normal traffic patterns
+| where ConnectionCount >= 5
+// Prioritize by connection frequency
+| order by ConnectionCount desc

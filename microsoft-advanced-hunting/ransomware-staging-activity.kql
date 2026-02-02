@@ -1,0 +1,45 @@
+// =============================================================================
+// RANSOMWARE PREPARATION ACTIVITY DETECTION
+// =============================================================================
+// PURPOSE: Detect commands commonly executed by ransomware operators before
+// encryption to maximize damage and prevent recovery.
+//
+// THREAT CONTEXT: Before deploying ransomware, attackers disable recovery options.
+// This includes deleting Volume Shadow Copies (VSS), disabling Windows Recovery,
+// and clearing backup catalogs. These actions are almost never legitimate and
+// represent a critical window to stop an attack before encryption begins.
+//
+// MITRE ATT&CK: T1490 (Inhibit System Recovery), T1059 (Command and Scripting)
+// =============================================================================
+let startTime=ago(7d);
+let endTime=ago(0d);
+DeviceProcessEvents
+| where Timestamp between (startTime .. endTime)
+// DETECTION: Commands that disable recovery mechanisms
+| where ProcessCommandLine has_any (
+    // Volume Shadow Copy deletion - prevents file recovery
+    "vssadmin delete shadows",
+    "wmic shadowcopy delete",
+    
+    // Boot configuration changes - disables Windows Recovery Environment
+    "bcdedit /set {default} recoveryenabled no",
+    
+    // Windows Backup deletion - removes system state backups
+    "wbadmin delete catalog",
+    "delete systemstatebackup",
+    
+    // Shadow storage manipulation - prevents new shadow copies
+    "resize shadowstorage"
+)
+    // Additional patterns using specific executables
+    or (FileName =~ "vssadmin.exe" and ProcessCommandLine has "delete")
+    or (FileName =~ "wmic.exe" and ProcessCommandLine has "shadowcopy")
+// OUTPUT: Full context for investigation
+| project 
+    Timestamp, 
+    DeviceName, 
+    AccountName, 
+    FileName, 
+    ProcessCommandLine, 
+    InitiatingProcessFileName  // What launched this? (e.g., cmd.exe, script, etc.)
+| order by Timestamp desc

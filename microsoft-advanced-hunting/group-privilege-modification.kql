@@ -1,0 +1,12 @@
+// Track modifications to privileged groups via CloudAppEvents
+let startTime=ago(30d);
+let endTime=ago(0d);
+let SensitiveGroups = dynamic(["Domain Admins", "Enterprise Admins", "Administrators", "Schema Admins", "Global Administrator", "Privileged Role Administrator", "Security Administrator"]);
+CloudAppEvents
+| where Timestamp between (startTime .. endTime)
+| where ActionType in~ ("Add member to group", "Add member to role", "Remove member from group")
+| extend TargetGroup = tostring(RawEventData.TargetGroup)
+| extend ModifiedUser = tostring(RawEventData.ObjectId)
+| where TargetGroup has_any (SensitiveGroups) or RawEventData has_any (SensitiveGroups)
+| project Timestamp, ActionType, AccountDisplayName, TargetGroup, ModifiedUser, IPAddress, CountryCode, RawEventData
+| order by Timestamp desc

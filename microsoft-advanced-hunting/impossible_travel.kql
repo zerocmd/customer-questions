@@ -1,0 +1,15 @@
+// Detect logins from geographically impossible locations within short timeframes
+let startTime=ago(12h);
+let endTime=ago(0d);
+let MaxTravelSpeedKmH = 800; // Approximate commercial flight speed
+AADSignInEventsBeta
+| where Timestamp between (startTime .. endTime)
+| where ErrorCode == 0
+| summarize by AccountUpn, Timestamp, Country, City, IPAddress, Latitude, Longitude
+| sort by AccountUpn, Timestamp asc
+| extend PrevTimestamp = prev(Timestamp, 1), PrevCountry = prev(Country, 1), PrevLat = prev(Latitude, 1), PrevLong = prev(Longitude, 1)
+| where AccountUpn == prev(AccountUpn, 1)
+| where Country != PrevCountry
+| extend TimeDiffHours = datetime_diff('minute', Timestamp, PrevTimestamp) / 60.0
+| where TimeDiffHours > 0 and TimeDiffHours < 4
+| project AccountUpn, FirstLogin = PrevTimestamp, FirstCountry = PrevCountry, SecondLogin = Timestamp, SecondCountry = Country, TimeDiffHours

@@ -1,0 +1,35 @@
+// =============================================================================
+// CLICKFIX SOCIAL ENGINEERING DETECTION
+// =============================================================================
+// PURPOSE: Detect ClickFix-style attacks where users are tricked by fake CAPTCHAs
+// into copying and executing malicious PowerShell commands.
+//
+// THREAT CONTEXT: ClickFix emerged in 2024 and surged in 2025. APT groups and
+// Ransomware-as-a-Service operators use fraudulent websites with fake human
+// verification prompts that instruct users to paste clipboard content into Run
+// dialog or PowerShell. The payload is typically an info-stealer or ransomware loader.
+//
+// MITRE ATT&CK: T1204.002 (User Execution: Malicious File), T1059.001 (PowerShell)
+// =============================================================================
+let startTime=ago(7d);
+let endTime=ago(0d);
+DeviceProcessEvents
+| where Timestamp between (startTime .. endTime)
+// DETECTION LOGIC: Look for shell processes spawned directly by browsers.
+// Legitimate browser activity rarely spawns PowerShell or cmd.exe directly.
+// This parent-child relationship is a strong indicator of user-executed malicious code.
+| where InitiatingProcessFileName in~ ("chrome.exe", "msedge.exe", "firefox.exe", "brave.exe")
+// Target the execution engines attackers rely on for payload delivery
+| where FileName in~ ("powershell.exe", "pwsh.exe", "cmd.exe")
+// Filter for suspicious command-line patterns commonly used in ClickFix payloads:
+// - IEX/Invoke-Expression: Execute code from string (download cradles)
+// - Invoke-WebRequest/DownloadString: Fetch remote payloads
+// - FromBase64String: Decode obfuscated commands
+// - -enc/-encodedcommand: Base64-encoded command execution
+// - bypass/hidden: Execution policy bypass and hidden windows
+| where ProcessCommandLine has_any (
+"IEX", "Invoke-Expression", "Invoke-WebRequest", "DownloadString",
+"FromBase64String", "-enc", "-encodedcommand", "bypass", "hidden"
+)
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, FileName, ProcessCommandLine
+| order by Timestamp desc

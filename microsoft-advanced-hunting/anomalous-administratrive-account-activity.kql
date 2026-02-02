@@ -1,0 +1,68 @@
+// =============================================================================
+// ANOMALOUS ADMINISTRATOR ACCOUNT ACTIVITY
+// =============================================================================
+// PURPOSE: Detect unusual patterns in privileged account usage that may indicate
+// compromised credentials or insider threat activity.
+//
+// THREAT CONTEXT: Admin accounts are high-value targets. Attackers who compromise
+// them can disable security controls, access sensitive data, and deploy ransomware.
+// Detecting anomalies like geographic impossibilities, unusual login volumes, or
+// high failure rates can identify compromise early.
+//
+// MITRE ATT&CK: T1078.002 (Valid Accounts: Domain Accounts), T1078.004 (Cloud Accounts)
+// =============================================================================
+let startTime=ago(14d);  // 2-week window for pattern analysis
+let endTime=ago(0d);
+// CUSTOMIZE: Add patterns that match your admin naming conventions
+let AdminPattern = dynamic(["admin", "administrator", "sysadmin", "domainadmin", "serviceadmin"]);
+AADSignInEventsBeta
+| where Timestamp between (startTime .. endTime)
+// Filter to admin accounts based on naming patterns
+| where AccountUpn has_any (AdminPattern) or AccountDisplayName has_any (AdminPattern)
+// Aggregate daily activity per admin account
+| summarize 
+    LoginCount = count(),
+    
+    // SUCCESS METRICS
+    SuccessfulLogins = countif(ErrorCode == 0),
+    SuccessIPs = make_set_if(IPAddress, ErrorCode == 0, 20),         // IPs where login succeeded
+    UniqueSuccessIPs = dcountif(IPAddress, ErrorCode == 0),
+    
+    // FAILURE METRICS  
+    FailedLogins = countif(ErrorCode != 0),
+    FailedIPs = make_set_if(IPAddress, ErrorCode != 0, 20),          // IPs where login failed
+    UniqueFailedIPs = dcountif(IPAddress, ErrorCode != 0),
+    FailureCodes = make_set_if(ErrorCode, ErrorCode != 0, 10),       // What errors occurred
+    
+    // OVERALL METRICS
+    UniqueIPs = dcount(IPAddress),
+    UniqueCountries = dcount(Country),
+    Countries = make_set(Country),
+    FirstSeen = min(Timestamp),
+    LastSeen = max(Timestamp)
+    
+    by AccountUpn, bin(Timestamp, 1d)
+// FLAG ANOMALIES
+| where UniqueCountries > 1
+    or UniqueIPs > 5
+    or FailedLogins > 10
+| project 
+    AccountUpn,
+    Timestamp,
+    
+    // Success details
+    SuccessfulLogins,
+    UniqueSuccessIPs,
+    SuccessIPs,
+    
+    // Failure details
+    FailedLogins,
+    UniqueFailedIPs,
+    FailedIPs,
+    FailureCodes,
+    
+    // Context
+    Countries,
+    FirstSeen,
+    LastSeen
+| order by FailedLogins desc, UniqueSuccessIPs desc

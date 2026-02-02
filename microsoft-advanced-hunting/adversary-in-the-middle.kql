@@ -1,0 +1,46 @@
+// =============================================================================
+// ADVERSARY-IN-THE-MIDDLE (AiTM) PHISHING DETECTION - GROUPED BY USER
+// =============================================================================
+// PURPOSE: Detect successful logins that occur shortly after MFA failures,
+// especially when the successful login comes from a different IP address.
+// Results are grouped by user to reduce noise and prioritize investigation.
+// =============================================================================
+let startTime=ago(7d);
+let endTime=ago(0d);
+// STEP 1: Collect all MFA-related failures
+let MFAFailures = AADSignInEventsBeta
+| where Timestamp between (startTime .. endTime)
+| where ErrorCode in (50074, 50076, 500121, 50097)
+| extend UserIdentifier = coalesce(AccountUpn, AccountDisplayName, AccountObjectId)
+| where isnotempty(UserIdentifier)
+| project 
+    FailTime = Timestamp, 
+    UserIdentifier, 
+    FailIP = IPAddress;
+// STEP 2: Collect all successful logins
+let Successes = AADSignInEventsBeta
+| where Timestamp between (startTime .. endTime)
+| where ErrorCode == 0
+| extend UserIdentifier = coalesce(AccountUpn, AccountDisplayName, AccountObjectId)
+| where isnotempty(UserIdentifier)
+| project 
+    SuccessTime = Timestamp, 
+    UserIdentifier, 
+    SuccessIP = IPAddress;
+// STEP 3: Correlate failures with subsequent successes
+MFAFailures
+| join kind=inner Successes on UserIdentifier
+| where SuccessTime between (FailTime .. (FailTime + 30m))
+| where FailIP != SuccessIP
+// STEP 4: Group by user for summary view
+| summarize 
+    MatchCount = count(),                           // Total suspicious patterns detected
+    FirstSeen = min(FailTime),                      // Earliest failure
+    LastSeen = max(SuccessTime),                    // Latest suspicious success
+    FailIPs = make_set(FailIP, 10),                 // Unique IPs where MFA failed
+    SuccessIPs = make_set(SuccessIP, 10),           // Unique IPs where login succeeded
+    UniqueFailIPs = dcount(FailIP),                 // Count of distinct fail IPs
+    UniqueSuccessIPs = dcount(SuccessIP)            // Count of distinct success IPs
+    by UserIdentifier
+// Prioritize users with most suspicious activity
+| order by MatchCount desc
