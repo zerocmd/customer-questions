@@ -1,0 +1,88 @@
+// Internet-facing devices running an unpatched PHP.
+
+let lookback = 30d;
+// Source 1 of 2: endpoint view. IsInternetFacing is Windows only; no port detail.
+let InternetFacingFromDeviceInfo =
+    DeviceInfo
+    | where Timestamp > ago(lookback)
+    | summarize arg_max(Timestamp, DeviceName, DeviceType, OSPlatform, PublicIP,
+        ExposureLevel, IsInternetFacing) by DeviceId
+    | where IsInternetFacing == true
+    | project ShortHost = tostring(split(tolower(DeviceName), ".")[0]),
+        Host = tolower(DeviceName),
+        ExposureSource = "DeviceInfo",
+        DeviceId,
+        DeviceType,
+        OsPlatform = OSPlatform,
+        PublicIp = tostring(PublicIP),
+        ExposureWidth = tostring(ExposureLevel),
+        ExposedPorts = "",
+        SourceCidr = "";
+// Source 2 of 2: exposure graph. Covers Linux; carries reachability rules.
+let InternetFacingFromGraph =
+    ExposureGraphNodes
+    | where Categories has "device"
+    | where NodeProperties has "exposedToInternet"
+    | extend Raw = NodeProperties.rawData
+    | extend Rules = todynamic(tostring(Raw.exposedToInternet.effectiveRules[0]))
+    | project ShortHost = tostring(split(tolower(NodeName), ".")[0]),
+        Host = tolower(NodeName),
+        ExposureSource = "ExposureGraph",
+        DeviceId = "",
+        DeviceType = tostring(Raw.deviceType),
+        OsPlatform = tostring(Raw.osPlatform),
+        PublicIp = tostring(Raw.publicIp),
+        ExposureWidth = tostring(Raw.exposedToInternet.exposureWidth),
+        ExposedPorts = tostring(Rules.destinationPortRanges),
+        SourceCidr = tostring(Rules.sourceCidr);
+// Neither source is complete alone. Keyed on first name label, so web01 and
+// web01.ad.example.com line up, but same-named hosts in other domains collapse.
+// max() on a string prefers a populated value over "".
+let InternetFacingHosts =
+    union InternetFacingFromDeviceInfo, InternetFacingFromGraph
+    | summarize
+        ExposureSources = make_set(ExposureSource),
+        MatchingDevices = make_set(Host),
+        DeviceId = max(DeviceId),
+        DeviceType = max(DeviceType),
+        OsPlatform = max(OsPlatform),
+        PublicIp = max(PublicIp),
+        ExposureWidth = max(ExposureWidth),
+        ExposedPorts = max(ExposedPorts),
+        SourceCidr = max(SourceCidr)
+      by ShortHost;
+// Needs Defender Vulnerability Management. Without it the table is empty, which looks
+// like "no unpatched PHP".
+let VulnerablePhp =
+    DeviceTvmSoftwareInventory
+    | where SoftwareVendor =~ "php"
+    | extend Branch = strcat(tostring(split(SoftwareVersion, ".")[0]), ".",
+        tostring(split(SoftwareVersion, ".")[1]))
+    | extend Patch = toint(extract(@"^(\d+)", 1, tostring(split(SoftwareVersion, ".")[2])))
+    // Per branch, so 8.2.4 is not read as a patched 8.2.35. Null FixedPatch is 8.1 or
+    // earlier, with no fix; null Patch is an unparseable version, surfaced not skipped.
+    | extend FixedPatch = case(
+        Branch == "8.5", 12,
+        Branch == "8.4", 27,
+        Branch == "8.3", 36,
+        Branch == "8.2", 35,
+        int(null))
+    | where isnull(FixedPatch) or isnull(Patch) or Patch < FixedPatch
+    | summarize PhpPackages = make_set(SoftwareName, 10),
+        PhpVersions = make_set(SoftwareVersion, 10),
+        TvmDeviceId = max(DeviceId),
+        DeviceName = max(tolower(DeviceName))
+      by ShortHost = tostring(split(tolower(DeviceName), ".")[0]);
+VulnerablePhp
+// leftouter: unpatched hosts are returned whether exposed or not.
+| join kind=leftouter InternetFacingHosts on ShortHost
+| extend DeviceId = iff(isempty(DeviceId), TvmDeviceId, DeviceId)
+// "unknown" = neither source saw the host; not exposed and not recorded are
+// indistinguishable.
+| extend InternetFacing = iff(array_length(ExposureSources) > 0, "yes", "unknown")
+// exposedToInternet also covers RDP and SMB, not reachable through a PHP runtime.
+| where DeviceType !~ "Workstation"
+| project DeviceName, ShortHost, MatchingDevices, DeviceId, PhpVersions, PhpPackages,
+    InternetFacing, ExposureSources, DeviceType, OsPlatform, PublicIp, ExposedPorts,
+    SourceCidr, ExposureWidth
+| sort by InternetFacing asc, DeviceName asc
